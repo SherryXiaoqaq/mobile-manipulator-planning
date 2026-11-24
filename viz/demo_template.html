@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>移动操作机器人 · 规划实验回放</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0a1520;--panel:#101f2c;--line:#2b404e;--ink:#f2f7f7;--muted:#a9bec5;--mint:#62e8ce;--amber:#ffc079;--red:#ffa49b;--violet:#c5a8ff;--mono:"Cascadia Mono",Consolas,monospace}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
+    .page{width:min(1440px,100%);margin:auto;padding:36px clamp(18px,4vw,58px) 42px}
+    header{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:28px}
+    .eyebrow{color:var(--mint);letter-spacing:.13em;font-size:.8rem;font-family:var(--mono);margin:0 0 8px}
+    h1,h2,p{margin:0} h1{font-weight:700;letter-spacing:-.045em;font-size:clamp(1.9rem,4.3vw,3.65rem);line-height:1.16}
+    header p:last-child{color:var(--muted);margin-top:12px} .scope{white-space:nowrap;color:var(--muted);font: .84rem/1.4 var(--mono);padding:8px 0 8px 14px;border-left:2px solid var(--mint)}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,335px);gap:20px;align-items:start}
+    .stage,.controls,.comparison{background:var(--panel);border:1px solid var(--line);border-radius:16px;min-width:0}
+    .stage{overflow:hidden}
+    .stage-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:15px 19px;border-bottom:1px solid var(--line)}
+    h2{font-size:1.07rem;font-weight:650} .status{display:flex;align-items:center;gap:7px;font-size:.86rem;color:var(--mint)}
+    .status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}.status.failed{color:var(--red)}.status.sync{color:var(--violet)}
+    .map-wrap{position:relative;background:#0c1925;min-height:290px;height:clamp(290px,38vw,480px)}
+    canvas{width:100%;height:100%;display:block}
+    .legend{display:flex;gap:16px;row-gap:5px;flex-wrap:wrap;padding:10px 19px;color:var(--muted);font-size:.84rem;border-top:1px solid var(--line)}
+    .legend span{display:inline-flex;align-items:center;gap:6px}.legend span[hidden]{display:none}.legend i{display:inline-block}.line{width:15px;border-top:2px dashed var(--mint)} .line.carry{border-color:var(--amber)} .dot{width:9px;height:9px;border-radius:50%;background:#92a6ff}.dot.box{border-radius:2px;background:var(--amber)}.dot.sync{border-radius:2px;background:var(--violet)}
+    .transport{border-top:1px solid var(--line);padding:13px 19px 16px}
+    .play-row{display:grid;grid-template-columns:auto minmax(25px,1fr) auto auto;gap:12px;align-items:center;margin-bottom:12px}
+    button,select{font:inherit;color:var(--ink);background:#182c39;border:1px solid #3c5463;border-radius:8px;min-height:40px;cursor:pointer}
+    button{padding:6px 12px} button.primary{background:var(--mint);border-color:var(--mint);color:#07251e;font-weight:700;min-width:78px}
+    button:disabled,select:disabled,input:disabled{opacity:.46;cursor:default}
+    input[type=range]{appearance:none;display:block;background:transparent;accent-color:var(--mint);margin:0;min-width:0;width:100%;height:22px;position:relative;cursor:pointer}
+    input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;background:var(--mint);border-radius:50%;border:1px solid #102f2b}
+    input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--mint);border-radius:50%;border:1px solid #102f2b}
+    .scrubber{position:relative;min-width:0}.timeline{position:absolute;inset:8px 7px;height:6px;background:#3c5463;border-radius:4px;overflow:hidden}.timeline span{height:100%;position:absolute;display:block;background:var(--violet)}
+    :focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+    select{appearance:none;padding:6px 30px 6px 10px;background:#182c39 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' stroke='%23a9bec5' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 9px center}
+    .time{font:.8rem/1.3 var(--mono);color:var(--muted);white-space:nowrap}
+    .phases{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:0;margin:0;list-style:none;color:var(--muted);font-size:.75rem;text-align:center}
+    .phases li{border-top:2px solid var(--line);padding-top:5px}.phases li.done{border-color:#419984}.phases li.active{border-color:var(--mint);color:var(--mint);font-weight:700}
+    .controls{padding:18px 18px 14px}.controls h2,.comparison h2{margin-bottom:12px}
+    .field{display:grid;gap:6px}.field,.scenario-desc{margin-bottom:14px}.field label,fieldset legend{font-size:.88rem;color:var(--muted)}
+    .scenario-desc,.method-desc{font-size:.87rem;color:var(--muted);min-height:2.8em}
+    fieldset{border:0;margin:0;padding:0}.methods{display:flex;flex-wrap:wrap;gap:7px;margin:5px 0 8px}.methods .method{flex:1 1 64px}
+    .method{display:block;position:relative}.method input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}.method span{display:block;padding:7px 5px;font-size:.86rem;text-align:center;border:1px solid #3c5463;border-radius:8px}.method input:checked+span{border-color:var(--mint);color:var(--mint);background:#11352f}.method input:focus-visible+span{outline:2px solid var(--amber);outline-offset:2px}
+    .kpis{margin:15px 0 0;border-top:1px solid var(--line)}.kpis div{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1px solid var(--line);padding:9px 0}.kpis div:last-child{border:0}.kpis dt{font-size:.86rem;color:var(--muted)}.kpis dd{margin:0;font:.94rem/1.5 var(--mono);white-space:nowrap}.kpis dd.em{color:var(--mint)}
+    .failure{color:var(--red);font-size:.87rem;padding:10px 0 0}.comparison{margin-top:20px;padding:16px 19px}.table-wrap{overflow:auto}.comparison table{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap;font-size:.92rem}.comparison th,.comparison td{padding:9px 14px 9px 0;border-bottom:1px solid var(--line)}.comparison thead th{color:var(--muted);font-size:.83rem;font-weight:500}.comparison tbody th{font-weight:600}.good{color:var(--mint)}.bad{color:var(--red)}.footnote{color:var(--muted);font-size:.82rem;margin-top:10px}
+    .map-info{background:#132535;border:1px solid #3c5463;border-radius:9px;padding:7px 10px;color:var(--muted);position:absolute;bottom:10px;right:12px;font: 12px/1.3 var(--mono);pointer-events:none}
+    .live-motion{position:absolute;top:10px;right:12px;display:flex;gap:5px;pointer-events:none;font-size:.75rem}.live-motion[hidden]{display:none}.live-motion span{background:#142b37;border:1px solid #3c5463;color:var(--muted);border-radius:6px;padding:3px 7px;white-space:nowrap}.live-motion .moving{border-color:#4eaa9b;color:var(--mint)}.live-motion.sync .moving{border-color:#a18ad1;color:var(--violet);background:#27233e}
+    .header-side{display:grid;justify-items:end;gap:8px}.algorithm-link{display:inline-flex;align-items:center;min-height:42px;padding:7px 12px;border:1px solid #a18ad1;border-radius:8px;background:#27233e;color:var(--violet);font-size:.9rem;font-weight:700;text-decoration:none;white-space:nowrap}.algorithm-link:hover,.seek-window:hover{background:#382d54}
+    .algorithm,.diagnostics{padding:17px 19px;background:var(--panel);border:1px solid var(--line);border-radius:16px;scroll-margin-top:12px}.algorithm{margin-bottom:20px}.diagnostics{margin-top:20px}.algorithm-heading{display:flex;justify-content:space-between;align-items:start;gap:12px}.algorithm-heading a{color:var(--violet);font-size:.86rem;text-underline-offset:3px;white-space:nowrap}.algorithm-intro{font-size:.86rem;color:var(--muted);margin-top:3px}.algorithm-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0;margin:13px 0 14px;list-style:none}.algorithm-flow li{border-left:2px solid #526274;padding-left:10px;font-size:.83rem;color:var(--muted);min-width:0}.algorithm-flow b{display:block;color:var(--ink);font-size:.88rem}.algorithm-flow li:nth-child(2){border-color:#a18ad1}
+    .algorithm-schedule{display:grid;grid-template-columns:6.4em minmax(0,1fr) 5em;gap:5px 11px;align-items:center;font-size:.83rem}.schedule-label{font-weight:600;white-space:nowrap}.schedule-track{height:24px;position:relative;background:#0c1925;border-radius:4px;overflow:visible}.schedule-track>span,.schedule-track>button{position:absolute;top:0;height:24px;border-radius:2px}.schedule-track .base{background:#3cbba4}.schedule-track .arm{background:#edaa64}.schedule-track .both{background:var(--violet)}.schedule-track .sync-window{min-height:24px;min-width:1px;padding:0;border:1px solid #dac9ff;background:var(--violet);color:#241c39;font:.72rem/1 var(--mono);font-weight:700;z-index:1}.schedule-track .sync-window:hover,.schedule-track .sync-window:focus-visible{background:#f0e7ff}.schedule-time{font:.8rem/1.3 var(--mono);text-align:right;white-space:nowrap}.schedule-ticks{grid-column:2;display:flex;justify-content:space-between;font:.72rem/1.3 var(--mono);color:var(--muted);margin-bottom:3px}.schedule-legend{display:flex;gap:6px 13px;flex-wrap:wrap;margin-top:7px;color:var(--muted);font-size:.76rem}.schedule-legend[hidden]{display:none}.schedule-legend span{display:inline-flex;align-items:center;gap:5px}.schedule-legend i{width:9px;height:9px;border-radius:2px}.schedule-legend .base{background:#3cbba4}.schedule-legend .arm{background:#edaa64}.schedule-legend .both{background:var(--violet)}.schedule-legend .hold{background:#0c1925;border:1px solid #536a7b}
+    .window-list{display:flex;gap:7px;flex-wrap:wrap;margin:11px 0 0}.window-list button{border-color:#655585;background:#251f38;color:#e2d5ff;min-height:37px;padding:5px 9px;font-size:.79rem}.window-list button:hover{background:#382d54}.algorithm-note{grid-column:1/-1;color:var(--muted);font-size:.85rem}.record-failed{color:var(--red)}
+    .schedule-label{grid-column:1}.schedule-track{grid-column:2}.schedule-time{grid-column:3}
+    .schedule-track .hold,.schedule-legend .hold{background:#263b47}.schedule-ticks{display:block;position:relative;height:1em}.schedule-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}.schedule-ticks span:first-child{transform:none}.schedule-ticks span:last-child{transform:translateX(-100%)}
+    .diagnostics .algorithm-intro{margin-bottom:12px}.diagnostic-list{display:grid;gap:8px}.diagnostic{border:1px solid var(--line);border-radius:8px;padding:10px 12px}.diagnostic summary{cursor:pointer;font-size:.9rem;color:var(--ink);font-weight:600}.diagnostic summary span{color:var(--muted);font-weight:400;margin-left:8px}.diagnostic-body{padding:9px 0 0}.diagnostic-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:0 0 7px;font-size:.84rem;color:var(--muted)}.seek-window{padding:3px 9px;min-height:32px;border-color:#a18ad1;background:#27233e;color:var(--violet);font-size:.82rem}.attempts-wrap{max-height:16rem;overflow:auto}.attempts{border-collapse:collapse;width:100%;text-align:left;font-size:.84rem}.attempts th,.attempts td{padding:6px 12px 6px 0;border-bottom:1px solid var(--line)}.attempts thead th{color:var(--muted);font-weight:500;background:var(--panel);position:sticky;top:0}.attempts td:first-child,.attempts td:nth-child(2){font-family:var(--mono);white-space:nowrap}
+    .video-layout .page{padding:16px 34px 0}.video-layout header{margin-bottom:10px}.video-layout .eyebrow{margin-bottom:3px}.video-layout header p:last-child{margin-top:4px}.video-layout h1{font-size:2.45rem}.video-layout .stage-head{padding-top:10px;padding-bottom:10px}.video-layout .controls{padding-bottom:10px}.video-layout .map-wrap{height:424px}.video-layout .comparison,.video-layout #play,.video-layout #speed{display:none}.video-layout .transport{padding-top:8px;padding-bottom:9px}.video-layout .play-row{grid-template-columns:1fr auto}.video-layout .scope{letter-spacing:.04em}
+    .video-layout .algorithm,.video-layout .algorithm-link,.video-layout .diagnostics{display:none}
+    .video-layout[data-method="overlap"] .kpis [data-metric="joint_motion_rad"],.video-layout[data-method="overlap"] .kpis [data-metric="planning_time_ms"],.video-layout[data-method="overlap"] .kpis [data-metric="candidate_pairs"]{display:none}
+    @media (max-width:880px){.layout{grid-template-columns:1fr}.controls{order:-1;display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.controls h2,.controls .kpis,.controls .failure{grid-column:1/-1}.controls .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px}.controls .kpis div:last-child{border-bottom:1px solid var(--line)}.map-wrap{height:clamp(290px,60vw,490px)}}
+    @media (max-width:510px){.page{padding:20px 12px 30px}.scope{display:none}.controls{display:block}.controls .kpis{grid-template-columns:1fr 1fr}.stage-head,.legend,.transport,.comparison{padding-left:11px;padding-right:11px}.play-row{gap:7px}.play-row select{padding-left:5px}.time{font-size:.72rem}.phases{font-size:.69rem}.legend{gap:8px}.map-info{display:none}}
+    @media (max-width:620px){header{display:block}.header-side{justify-items:start;margin-top:12px}.header-side .scope{display:none}.algorithm,.diagnostics{padding:13px 11px}.algorithm-flow{grid-template-columns:1fr;gap:6px}.algorithm-flow b{display:inline;margin-right:6px}.algorithm-schedule{grid-template-columns:4.3em minmax(0,1fr) 4.2em;gap:4px 6px}.schedule-track .sync-window{font-size:.61rem}.diagnostic summary span{display:block;margin-left:0}.diagnostic{padding:9px}.attempts th,.attempts td{padding-right:7px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div><p class="eyebrow">TOPIC 02 / MOTION PLANNING</p><h1>移动操作机器人</h1><p>取放任务的规划实验与轨迹回放</p></div>
+      <div class="header-side"><div class="scope">二维俯视仿真</div><a class="algorithm-link" href="#algorithm">同步收展算法</a></div>
+    </header>
+    <section class="algorithm" id="algorithm" aria-labelledby="algorithm-title">
+      <div class="algorithm-heading"><div><h2 id="algorithm-title">同步收展算法</h2><p class="algorithm-intro" id="algorithm-context"></p></div><a href="#algorithm-diagnostics">候选校验记录</a></div>
+      <ol class="algorithm-flow">
+        <li><b>尝试最长同步</b>取机械臂动作与可用行驶段时长的较小值。</li>
+        <li><b>校验连续净距</b>底盘、连杆和末端负载的保守净距下界须高于 <span id="algorithm-threshold"></span>。</li>
+        <li><b>缩短或回退</b>未通过时按 <span id="algorithm-step"></span> 网格从长到短重试，耗尽候选时保留原停走时序。</li>
+      </ol>
+      <div class="algorithm-schedule" id="algorithm-schedule" aria-label="协同规划与同步收展的对齐时序"></div>
+      <div class="schedule-legend" id="schedule-legend"><span><i class="base"></i>底盘行驶</span><span><i class="arm"></i>机械臂运动</span><span><i class="both"></i>同时运动，点击定位</span><span><i class="hold"></i>抓放或等待</span></div>
+      <div class="window-list" id="window-list" aria-label="通过校验的同步区间"></div>
+    </section>
+    <div class="layout">
+      <section class="stage" id="replay-stage" aria-labelledby="map-title">
+        <div class="stage-head"><h2 id="map-title">仿真地图</h2><div id="status" class="status"></div></div>
+        <div class="map-wrap"><canvas id="map" role="img" aria-label="房间障碍、规划路径、机械臂与物体的二维仿真地图"></canvas><span id="map-info" class="map-info"></span><div id="live-motion" class="live-motion" hidden><span id="base-motion"></span><span id="arm-motion"></span></div></div>
+        <div class="legend" aria-label="地图图例"><span><i class="line"></i>取货路径</span><span><i class="line carry"></i>搬运路径</span><span><i class="dot"></i>停靠点</span><span><i class="dot box"></i>物体</span><span id="sync-legend" hidden><i class="dot sync"></i>同步运动区间</span></div>
+        <div class="transport">
+          <div class="play-row"><button class="primary" type="button" id="play">播放</button><div class="scrubber"><div id="timeline" class="timeline" aria-hidden="true"></div><input id="progress" type="range" min="0" max="0" step="any" value="0" aria-label="回放进度"></div><output id="time" for="progress" class="time"></output><select id="speed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+          <ol class="phases" id="phases" aria-label="任务阶段"><li>驶向取货点</li><li>取货</li><li>搬运</li><li>放置</li><li>完成</li></ol>
+        </div>
+      </section>
+      <aside class="controls" aria-labelledby="experiment-title">
+        <h2 id="experiment-title">实验设置</h2>
+        <div><div class="field"><label for="scene">地图场景</label><select id="scene"></select></div><p class="scenario-desc" id="scenario-desc"></p></div>
+        <div><fieldset><legend>规划方法</legend><div class="methods" id="methods"></div></fieldset><p class="method-desc" id="method-desc"></p></div>
+        <dl class="kpis" id="metrics"></dl>
+        <p class="failure" id="failure" hidden></p>
+      </aside>
+    </div>
+    <section class="diagnostics" id="algorithm-diagnostics" aria-labelledby="diagnostic-title">
+      <div class="algorithm-heading"><div><h2 id="diagnostic-title">候选校验记录</h2><p class="algorithm-intro" id="diagnostic-context"></p></div><a href="#algorithm">时序对比</a></div>
+      <div class="diagnostic-list" id="diagnostic-list"></div>
+    </section>
+    <section class="comparison" aria-labelledby="compare-title">
+      <h2 id="compare-title">同场景方法对比</h2>
+      <div class="table-wrap"><table><thead><tr><th scope="col">方法</th><th scope="col">任务结果</th><th scope="col">底盘路程</th><th scope="col">关节总转角</th><th scope="col">最小净距</th><th scope="col">仿真用时</th><th scope="col">规划耗时</th></tr></thead><tbody id="comparison"></tbody></table></div>
+      <p class="footnote">仿真用时来自轨迹时间轴。规划耗时为本次实验的计算计时。最小净距按模型与轨迹校验规则计算。</p>
+    </section>
+  </main>
+  <script id="experiment" type="application/json">/* EXPERIMENT_JSON */</script>
+  <script>
+    'use strict';
+    const data = JSON.parse(document.getElementById('experiment').textContent);
+    const $ = id => document.getElementById(id);
+    const map = $('map');
+    const ctx = map.getContext('2d');
+    const sceneOptions = $('scene');
+    const methods = {
+      baseline: {label:'最近停靠', detail:'按几何近邻选定停靠点，再规划底盘和机械臂运动。'},
+      sequential: {label:'逐段最短', detail:'逐段选择底盘可达、机械臂可操作且行驶距离最短的停靠点。'},
+      coupled: {label:'协同规划', detail:'联合比较候选停靠点，筛查底盘路径与机械臂动作的可行性。'},
+      overlap: {label:'同步收展', detail:'沿用协同规划的路径与停靠点，在校验通过的区间内边行驶边收展机械臂。'}
+    };
+    const phaseNames = {
+      drive_to_pick:['驶向取货停靠点',0], extend_pick:['机械臂伸向物体',1], grasp:['抓取物体',1], retract_pick:['收臂并持有物体',1],
+      drive_to_drop:['搬运至放置停靠点',2], extend_drop:['机械臂伸向放置位',3], release:['释放物体',3], retract_drop:['放置后收臂',3], complete:['任务完成',4]
+    };
+    const windowNames = {extend_pick:'到站前伸臂取货',retract_pick:'取货后边走边收臂',extend_drop:'到站前伸臂放置'};
+    const specs = [
+      ['base_length_m','底盘路程','m',2],['joint_motion_rad','关节总转角','rad',2],['min_clearance_m','最小净距','m',3],
+      ['simulated_time_s','仿真用时','s',2],['planning_time_ms','规划耗时','ms',1]
+    ];
+    const colors = {map:'#101f2c',bg:'#0c1925',grid:'#203441',edge:'#344e60',wall:'#254252',hatch:'#35556a',mint:'#62e8ce',amber:'#ffc079',text:'#f2f7f7',muted:'#a9bec5',purple:'#a5b5ff',sync:'#c5a8ff'};
+    const query=new URLSearchParams(location.search);
+    if(query.get('video')==='1'){
+      document.documentElement.classList.add('video-layout');
+      document.querySelector('.scope').textContent=`二维俯视仿真 · ${query.get('speed') || '1'}× 回放`;
+    }
+    let scene,run,method=query.get('method') || 'overlap',time=0,playing=false,lastTick=0,loopId=0,algorithmScene;
+    for (const scenario of data.scenarios) sceneOptions.add(new Option(scenario.name,scenario.id));
+    const defaultScene = method==='overlap' ? (data.demo_overlap_scenario || data.demo_scenario) : data.demo_scenario;
+    sceneOptions.value = data.scenarios.find(item=>item.id===defaultScene)?.id || data.scenarios[0].id;
+
+    function metric(run,key,unit,decimals){
+      const value=run.metrics?.[key];
+      return Number.isFinite(value)?`${value.toFixed(decimals)} ${unit}`:'—';
+    }
+    function element(tag,className='',message=''){
+      const item=document.createElement(tag);
+      if(className)item.className=className;
+      if(message)item.textContent=message;
+      return item;
+    }
+    function placeOnTrack(item,start,end,axis){
+      item.style.left=`${100*start/axis}%`;
+      item.style.width=`${100*(end-start)/axis}%`;
+    }
+    function motionSegments(frames){
+      const segments=[];
+      const moved=(from,to)=>from.some((value,index)=>Math.abs(value-to[index])>1e-8);
+      for(let index=1;index<frames.length;index++){
+        const last=frames[index-1],next=frames[index];
+        if(next.t<=last.t)continue;
+        const base=moved(last.base,next.base),arm=moved(last.joints,next.joints);
+        const style=base&&arm?'both':base?'base':arm?'arm':'hold';
+        const previous=segments.at(-1);
+        if(previous?.style===style)previous.end=next.t;
+        else segments.push({start:last.t,end:next.t,style});
+      }
+      return segments;
+    }
+    function seekWindow(interval){
+      method='overlap';
+      setSelection();
+      time=(interval.start_s+interval.end_s)/2;
+      render();
+      $('replay-stage').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+      $('play').focus({preventScroll:true});
+    }
+    function windowButton(text,interval,className){
+      const button=element('button',className,text);
+      button.type='button';
+      button.addEventListener('click',()=>seekWindow(interval));
+      return button;
+    }
+    function renderDiagnostics(overlap,searches){
+      const list=$('diagnostic-list');
+      list.replaceChildren();
+      const context=$('diagnostic-context');
+      if(!overlap?.success||!searches.length){
+        context.textContent=overlap?.reason || '当前数据没有候选校验记录。';
+        return;
+      }
+      context.textContent='每个窗口从最长候选开始。拒绝项记录首次未通过检查时的净距下界，通过项记录整个窗口的净距下界。';
+      for(const search of searches){
+        const {phase,cap_s:cap,selected_s:selected,attempts,interval}=search;
+        const accepted=attempts.find(item=>item.accepted);
+        const rejects=attempts.filter(item=>!item.accepted).length;
+        const details=element('details','diagnostic');
+        details.open=rejects>0;
+        const label=windowNames[phase] || phase;
+        const summary=element('summary','',label);
+        const evidence=accepted?`采用 ${selected.toFixed(2)} s，净距下界 ${accepted.clearance_lower_bound_m.toFixed(4)} m`:'沿用停走时序';
+        summary.append(element('span','',`${evidence}，${rejects} 次拒绝`));
+        const body=element('div','diagnostic-body');
+        const actions=element('p','diagnostic-actions');
+        actions.append(element('span','',`最长候选 ${cap.toFixed(3)} s`));
+        if(interval)actions.append(windowButton(`回放 ${interval.start_s.toFixed(2)}–${interval.end_s.toFixed(2)} s`,interval,'seek-window'));
+        body.append(actions);
+        if(attempts.length){
+          const table=element('table','attempts'),head=table.createTHead().insertRow();
+          for(const title of ['候选同步','净距下界','检查结果']){
+            const th=element('th','',title);th.scope='col';head.append(th);
+          }
+          const rows=table.createTBody();
+          for(const attempt of attempts){
+            const row=rows.insertRow();
+            row.insertCell().textContent=`${attempt.duration_s.toFixed(3)} s`;
+            const clearance=row.insertCell();
+            clearance.textContent=`${attempt.clearance_lower_bound_m.toFixed(4)} m`;
+            clearance.title=`${attempt.accepted?'全窗口净距下界':'首次未通过检查的净距下界'} ${attempt.clearance_lower_bound_m.toFixed(6)} m`;
+            const status=row.insertCell();status.className=attempt.accepted?'good':'bad';
+            status.textContent=attempt.accepted?'通过，采用':'拒绝，缩短';
+          }
+          const wrap=element('div','attempts-wrap');wrap.append(table);body.append(wrap);
+        }
+        details.append(summary,body);list.append(details);
+      }
+    }
+    function renderAlgorithm(){
+      if(query.get('video')==='1'||algorithmScene===scene.id)return;
+      algorithmScene=scene.id;
+      const reference=scene.methods.coupled,overlap=scene.methods.overlap;
+      const searches=overlap?.overlap_search || [];
+      $('algorithm-threshold').textContent=`${(data.model.min_required_clearance_m ?? .06).toFixed(2)} m`;
+      $('algorithm-step').textContent=`${(data.model.overlap_step_s ?? .10).toFixed(2)} s`;
+      const schedule=$('algorithm-schedule'),windows=$('window-list'),legend=$('schedule-legend');
+      schedule.replaceChildren();windows.replaceChildren();
+      renderDiagnostics(overlap,searches);
+      const valid=reference?.success&&overlap?.success;
+      legend.hidden=!valid;
+      if(!valid){
+        $('algorithm-context').textContent=`当前场景为${scene.name}。`;
+        schedule.append(element('p','algorithm-note record-failed',overlap?.reason || '没有可对齐的仿真时序。'));
+        return;
+      }
+      const referenceTime=reference.frames.at(-1).t,synchronizedTime=overlap.frames.at(-1).t;
+      const saved=overlap.metrics.saved_time_s ?? referenceTime-synchronizedTime;
+      $('algorithm-context').textContent=`${scene.name}使用相同的路径与停靠点，同步收展节省 ${saved.toFixed(2)} s（${(100*saved/referenceTime).toFixed(1)}%）。`;
+      const axis=Math.ceil(Math.max(referenceTime,synchronizedTime)/5)*5;
+      const ticks=element('div','schedule-ticks');
+      for(let tick=0;tick<=axis;tick+=5){
+        const label=element('span','',`${tick}${tick===axis?' s':''}`);
+        label.style.left=`${100*tick/axis}%`;
+        ticks.append(label);
+      }
+      schedule.append(ticks);
+      for(const [label,trajectory,showWindows] of [['协同规划',reference,false],['同步收展',overlap,true]]){
+        const track=element('div','schedule-track');
+        for(const {start,end,style} of motionSegments(trajectory.frames)){
+          const segment=element('span',style);segment.setAttribute('aria-hidden','true');
+          placeOnTrack(segment,start,end,axis);track.append(segment);
+        }
+        if(showWindows){
+          for(const [index,interval] of (overlap.overlap_intervals || []).entries()){
+            const action=windowNames[interval.phase] || interval.phase;
+            const button=windowButton(String(index+1),interval,'sync-window');
+            button.title=`${action}，${interval.start_s.toFixed(2)}–${interval.end_s.toFixed(2)} s`;
+            button.setAttribute('aria-label',`定位到${button.title}`);
+            placeOnTrack(button,interval.start_s,interval.end_s,axis);track.append(button);
+            const record=searches.find(item=>item.phase===interval.phase);
+            const duration=record?.selected_s ?? interval.end_s-interval.start_s;
+            const verification=record?.attempts.find(item=>item.accepted)?.clearance_lower_bound_m;
+            const margin=Number.isFinite(verification)?`，净距下界 ${verification.toFixed(4)} m`:'';
+            windows.append(windowButton(`${action} ${duration.toFixed(2)} s${margin}`,interval));
+          }
+        }
+        schedule.append(element('div','schedule-label',label),track,element('div','schedule-time',`${trajectory.frames.at(-1).t.toFixed(2)} s`));
+      }
+    }
+    function setSelection(){
+      pause();
+      scene = data.scenarios.find(item => item.id===sceneOptions.value);
+      if(!scene.methods[method])method=scene.methods.coupled?'coupled':Object.keys(scene.methods)[0];
+      const available=Object.entries(methods).filter(([key])=>scene.methods[key]);
+      if([...$('methods').querySelectorAll('input')].map(input=>input.value).join()!==available.map(([key])=>key).join()){
+        $('methods').replaceChildren(...available.map(([key,info])=>{
+          const label=document.createElement('label'),input=document.createElement('input'),name=document.createElement('span');
+          label.className='method';input.type='radio';input.name='method';input.value=key;name.textContent=info.label;
+          input.addEventListener('change',()=>{method=key;setSelection();});label.append(input,name);return label;
+        }));
+      }
+      for(const input of $('methods').querySelectorAll('input'))input.checked=input.value===method;
+      run = scene.methods[method];
+      document.documentElement.dataset.method=method;
+      time = 0;
+      $('scenario-desc').textContent=scene.description;
+      $('method-desc').textContent=methods[method].detail;
+      if(method==='overlap'&&run.success&&!run.overlap_intervals?.length){
+        $('method-desc').textContent='当前路径没有通过安全校验的同步区间，沿用原协同规划的停走时序。';
+      }
+      $('failure').hidden=run.success || !run.reason;
+      $('failure').textContent=run.reason || '';
+      $('status').classList.toggle('failed',!run.success);
+      $('map-info').textContent=`${scene.width} × ${scene.height} m`;
+      const entries=specs.map(([key,label,unit,decimals])=>[key,label,metric(run,key,unit,decimals),key==='min_clearance_m']);
+      if(method==='overlap'&&run.success){
+        const saved=run.metrics.saved_time_s, original=scene.methods.coupled?.metrics.simulated_time_s;
+        if(Number.isFinite(saved)&&original>0)entries.push(['saved_time_s','较协同规划节省',`${saved.toFixed(2)} s (${(100*saved/original).toFixed(1)}%)`,true]);
+        if(Number.isFinite(run.metrics.overlap_windows))entries.push(['overlap_windows','同步运动区间数',String(run.metrics.overlap_windows),false]);
+      }
+      if(Number.isFinite(run.metrics?.candidate_pairs)){
+        const feasible=Number.isFinite(run.metrics.feasible_pairs)?run.metrics.feasible_pairs:'—';
+        entries.push(['candidate_pairs','可行 / 评估停靠对',`${feasible} / ${run.metrics.candidate_pairs}`,false]);
+      }
+      $('metrics').replaceChildren(...entries.map(([key,label,value,emphasis])=>{
+        const row=document.createElement('div'),term=document.createElement('dt'),detail=document.createElement('dd');
+        row.dataset.metric=key;
+        term.textContent=label; detail.textContent=value; if(emphasis)detail.className='em';
+        row.append(term,detail); return row;
+      }));
+      $('comparison').replaceChildren(...available.map(([key,info])=>{
+        const other=scene.methods[key],row=document.createElement('tr'),header=document.createElement('th');
+        header.scope='row';header.textContent=info.label;row.append(header);
+        const status=document.createElement('td');status.textContent=other.success?'成功':'失败';status.className=other.success?'good':'bad';row.append(status);
+        for(const [metricKey,,unit,decimals] of specs){
+          const cell=document.createElement('td');cell.textContent=metric(other,metricKey,unit,decimals);row.append(cell);
+        }
+        return row;
+      }));
+      $('progress').max=duration();
+      for(const id of ['play','progress','speed']) $(id).disabled=duration()<=0;
+      const intervals=duration()>0 ? run.overlap_intervals || [] : [];
+      $('sync-legend').hidden=!intervals.length;
+      $('timeline').replaceChildren(...intervals.map(({start_s,end_s})=>{
+        const window=document.createElement('span');
+        window.style.left=`${100*start_s/duration()}%`;
+        window.style.width=`${100*(end_s-start_s)/duration()}%`;
+        return window;
+      }));
+      renderAlgorithm();
+      render();
+    }
+    function duration(){return run?.frames?.at(-1)?.t || 0;}
+    function frameAt(t){
+      const frames=run.frames;
+      if (!frames?.length) return null;
+      let left=0,right=frames.length-1;
+      while(left<right){
+        const mid=Math.ceil((left+right)/2);
+        if(frames[mid].t<=t)left=mid;else right=mid-1;
+      }
+      return frames[left];
+    }
+    function render(){
+      if(!scene)return;
+      const frame=frameAt(time);
+      $('status').textContent=frame?(phaseNames[frame.phase]?.[0] || '回放中'):'规划失败';
+      const showMotion=method==='overlap'&&!!frame;
+      const syncing=showMotion&&frame.base_moving&&frame.arm_moving;
+      $('status').classList.toggle('sync',!!syncing);
+      $('live-motion').hidden=!showMotion;
+      $('live-motion').classList.toggle('sync',!!syncing);
+      if(showMotion){
+        for(const [id,moving,subject,action] of [['base-motion',frame.base_moving,'底盘','行驶'],['arm-motion',frame.arm_moving,'机械臂','运动']]){
+          $(id).textContent=`${subject}${moving?action:'静止'}`;
+          $(id).classList.toggle('moving',!!moving);
+        }
+      }
+      const phase=frame?(phaseNames[frame.phase]?.[1] ?? -1):-1;
+      [...$('phases').children].forEach((item,index)=>{
+        item.classList.toggle('done',index<phase);
+        item.classList.toggle('active',index===phase);
+        if(index===phase)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');
+      });
+      $('progress').value=time;
+      $('time').textContent=`${time.toFixed(1)} / ${duration().toFixed(1)} s`;
+      draw(frame);
+    }
+    function play(){
+      if(duration()<=0)return;
+      if(time>=duration())time=0;
+      playing=true;lastTick=performance.now();$('play').textContent='暂停';
+      loopId=requestAnimationFrame(tick);
+    }
+    function pause(){playing=false;cancelAnimationFrame(loopId);$('play').textContent='播放';}
+    function tick(now){
+      time=Math.min(duration(),time+(now-lastTick)/1000*Number($('speed').value));
+      lastTick=now;render();
+      if(time>=duration())pause();
+      if(playing)loopId=requestAnimationFrame(tick);
+    }
+    function draw(frame){
+      const ratio=window.devicePixelRatio||1;
+      const {width,height}=map.getBoundingClientRect();
+      if(!width||!height)return;
+      const physicalWidth=Math.round(width*ratio),physicalHeight=Math.round(height*ratio);
+      if(map.width!==physicalWidth||map.height!==physicalHeight){map.width=physicalWidth;map.height=physicalHeight;}
+      ctx.setTransform(ratio,0,0,ratio,0,0);
+      ctx.fillStyle=colors.bg;ctx.fillRect(0,0,width,height);
+      const margin=width<440?28:43;
+      const scale=Math.min((width-2*margin)/scene.width,(height-50)/scene.height);
+      const ox=(width-scale*scene.width)/2,oy=(height+scale*scene.height)/2;
+      const toPx=([x,y])=>[ox+x*scale,oy-y*scale];
+      const line=(points,color,lineWidth,dash=[])=>{
+        if(!points?.length)return;
+        ctx.beginPath();ctx.moveTo(...toPx(points[0]));
+        for(const point of points.slice(1))ctx.lineTo(...toPx(point));
+        ctx.strokeStyle=color;ctx.lineWidth=lineWidth;ctx.setLineDash(dash);ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();ctx.setLineDash([]);
+      };
+      const circle=(point,radius,fill,stroke,lineWidth=1.5)=>{
+        const [x,y]=toPx(point);ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);
+        if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lineWidth;ctx.stroke();}
+      };
+      const label=(s,x,y,color,align='center',size=12)=>{
+        ctx.fillStyle=color;ctx.font=`${size}px Microsoft YaHei, Noto Sans SC, sans-serif`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(s,x,y);
+      };
+      const mapWidth=scene.width*scale,mapHeight=scene.height*scale,top=oy-mapHeight;
+      ctx.fillStyle=colors.map;ctx.fillRect(ox,top,mapWidth,mapHeight);
+      for(let x=0;x<=scene.width;x++){
+        line([[x,0],[x,scene.height]],colors.grid,.8);
+        if(x%2===0)label(String(x),ox+x*scale,oy+12,colors.muted,'center',10);
+      }
+      for(let y=0;y<=scene.height;y++){
+        line([[0,y],[scene.width,y]],colors.grid,.8);
+        if(y%2===0)label(String(y),ox-10,oy-y*scale,colors.muted,'right',10);
+      }
+      ctx.strokeStyle=colors.edge;ctx.lineWidth=1;ctx.strokeRect(ox,top,mapWidth,mapHeight);
+      for(const obstacle of scene.obstacles){
+        const [x,y]=toPx([obstacle.x,obstacle.y+obstacle.h]),w=obstacle.w*scale,h=obstacle.h*scale;
+        ctx.fillStyle=colors.wall;ctx.fillRect(x,y,w,h);
+        ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.strokeStyle=colors.hatch;ctx.lineWidth=.8;
+        for(let d=-h;d<w;d+=9){ctx.beginPath();ctx.moveTo(x+d,y+h);ctx.lineTo(x+d+h,y);ctx.stroke();}
+        ctx.restore();ctx.strokeStyle=colors.edge;ctx.strokeRect(x,y,w,h);
+        if(w>45&&h>16&&obstacle.label){
+          ctx.fillStyle='#18303e';ctx.fillRect(x,y+h/2-8,w,16);
+          ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();label(obstacle.label,x+w/2,y+h/2,'#d0dade','center',width<530?10:11);ctx.restore();
+        }
+      }
+      const paths=run.paths||{};
+      line(paths.to_pick,colors.mint,2,[5,5]);line(paths.to_drop,colors.amber,2,[5,5]);
+      circle(scene.start,4,colors.muted,null);
+      for(const [p,col] of [[scene.pickup,colors.mint],[scene.dropoff,colors.amber]]){
+        circle(p,8,colors.map,col);
+      }
+      for(const dock of [run.pickup_dock,run.dropoff_dock])if(dock)circle(dock,4,colors.purple,colors.bg,1.2);
+      const base=frame?.base||scene.start;
+      circle(base,data.model.base_radius*scale,'#25495d','#93d7df',1.8);
+      if(frame?.base_moving&&frame?.arm_moving){
+        ctx.setLineDash([3,4]);circle(base,data.model.base_radius*scale+5,null,colors.sync,2);ctx.setLineDash([]);
+      }
+      if(frame){
+        const arm=frame.arm;
+        line(arm,'#08232a',Math.max(data.model.link_radius*2*scale,5)+3);
+        line(arm,colors.mint,Math.max(data.model.link_radius*2*scale,4));
+        circle(arm[0],4,colors.map,colors.mint);
+        circle(arm[1],3.2,colors.map,colors.mint);
+        circle(arm[2],3.8,colors.mint,colors.map);
+      }
+      const cargo=frame?.cargo||scene.pickup;
+      const [cx,cy]=toPx(cargo),sz=Math.max(7,data.model.cargo_radius*2*scale);
+      ctx.fillStyle=colors.amber;ctx.fillRect(cx-sz/2,cy-sz/2,sz,sz);
+      ctx.strokeStyle='#774824';ctx.lineWidth=1;ctx.strokeRect(cx-sz/2,cy-sz/2,sz,sz);
+      for(const [p,name,col] of [[scene.pickup,'取货',colors.mint],[scene.dropoff,'放置',colors.amber]]){
+        const [x,y]=toPx(p);
+        const baseToRight=base[0]>=p[0]&&Math.hypot(base[0]-p[0],base[1]-p[1])<1.25;
+        const right=x<ox+mapWidth-35&&!baseToRight;
+        label(name,x+(right?12:-12),y-10,col,right?'left':'right',11);
+      }
+    }
+    sceneOptions.addEventListener('change',setSelection);
+    $('play').addEventListener('click',()=>playing?pause():play());
+    $('progress').addEventListener('input',event=>{pause();time=Number(event.target.value);render();});
+    addEventListener('keydown',event=>{
+      if(event.code==='Space'&&!event.repeat&&document.activeElement===document.body&&duration()>0){event.preventDefault();playing?pause():play();}
+    });
+    new ResizeObserver(()=>render()).observe(map);
+    setSelection();
+    if(query.get('video')==='1'){
+      window.replayExport={
+        duration,
+        selection(){return {sceneId:scene.id,method,hasSequential:scene.methods.sequential?.success===true};},
+        seek(t){time=Math.min(duration(),Math.max(0,t));render();},
+        select(sceneId,methodId){
+          const next=data.scenarios.find(item=>item.id===sceneId);
+          if(!next||!next.methods[methodId])throw new Error('Unknown scenario or method.');
+          sceneOptions.value=sceneId;method=methodId;setSelection();
+        },
+        pickupTime(){return run.frames.find(frame=>frame.phase==='retract_pick'&&frame.grasped)?.t ?? duration()*.5;},
+        syncTime(phase){
+          const frames=run.frames.filter(frame=>frame.phase===phase&&frame.base_moving&&frame.arm_moving);
+          return frames[Math.floor(frames.length/2)]?.t ?? null;
+        }
+      };
+    }
+  </script>
+</body>
+</html>

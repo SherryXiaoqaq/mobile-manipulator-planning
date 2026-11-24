@@ -1,0 +1,17 @@
+﻿scenario,method,success,base_length_m,joint_motion_rad,min_clearance_m,simulated_time_s,planning_time_ms,candidate_pairs,feasible_pairs,score,reason,saved_time_s,concurrent_time_s,overlap_windows,retiming_time_ms
+open_floor,baseline,True,7.349626,11.499935,0.68,15.611493,45.285,1,1,9.660579,,,,,
+open_floor,coupled,True,7.234425,8.432908,0.68,13.379161,555.752,992,992,8.993312,,,,,
+open_floor,sequential,True,7.349626,11.499935,0.68,15.611493,407.698,31,31,9.660579,,,,,
+open_floor,overlap,True,7.234425,8.432908,0.68,10.54356,559.214,992,992,8.993312,,2.835601,2.835601,3,3.463
+narrow_aisle,baseline,True,12.525523,10.52499,0.072965,21.03769,100.795,1,1,15.317024,,,,,
+narrow_aisle,coupled,True,12.63482,7.039709,0.072965,19.437775,4098.348,651,651,14.798971,,,,,
+narrow_aisle,sequential,True,12.390434,14.003182,0.072965,21.961927,2306.458,21,21,15.80801,,,,,
+narrow_aisle,overlap,True,12.63482,7.039709,0.072965,16.630536,4117.075,651,651,14.798971,,2.807239,2.807239,3,18.726
+occluded_dock,baseline,False,,,,,304.127,1,0,,最近取件停靠点无法通过机械臂碰撞检查。,,,,
+occluded_dock,coupled,True,10.997176,14.671362,0.062452,19.368256,2784.577,204,153,14.57941,,,,,
+occluded_dock,sequential,True,12.219317,15.303651,0.068035,21.123007,1662.529,17,17,15.891256,,,,,
+occluded_dock,overlap,True,10.997176,14.671362,0.062452,15.603313,2841.82,204,153,14.57941,,3.764943,3.764944,3,57.244
+blocked_passage,baseline,False,,,,,106.681,1,0,,最近停靠点之间没有可行底盘路线。,,,,
+blocked_passage,coupled,False,,,,,994.865,992,0,,可操作停靠点之间没有可行底盘路线。,,,,
+blocked_passage,sequential,False,,,,,573.995,31,0,,从所选取件停靠点无法到达可操作的放置停靠点。,,,,
+blocked_passage,overlap,False,,,,,994.865,992,0,,可操作停靠点之间没有可行底盘路线。,,,0,0.0

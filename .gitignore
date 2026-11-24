@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+results_rerun/
+results/.simulation-*.mp4
+~$*.pptx
+.DS_Store
+Thumbs.db
